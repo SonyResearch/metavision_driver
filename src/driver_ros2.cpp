@@ -226,7 +226,9 @@ void DriverROS2::start()
   wrapper_->setStatisticsInterval(printInterval);
   std::string biasFile;
   this->get_parameter_or("bias_file", biasFile, std::string(""));
-  if (!wrapper_->initialize(useMT, biasFile)) {
+  bool saveRawFile;
+  this->get_parameter_or("save_raw_file", saveRawFile, false);
+  if (!wrapper_->initialize(useMT, biasFile, saveRawFile)) {
     LOG_ERROR("driver initialization failed!");
     throw std::runtime_error("driver initialization failed!");
   }

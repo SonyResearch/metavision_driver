@@ -68,7 +68,7 @@ public:
   int getBias(const std::string & name);
   bool hasBias(const std::string & name);
   int setBias(const std::string & name, int val);
-  bool initialize(bool useMultithreading, const std::string & biasFile);
+  bool initialize(bool useMultithreading, const std::string & biasFile, bool saveRawFile = false);
   bool saveBiases();
   inline void updateMsgsSent(int inc)
   {
@@ -188,6 +188,9 @@ private:
   std::deque<QueueElement> queue_;
   std::shared_ptr<std::thread> processingThread_;
   bool keepRunning_{true};
+
+  bool saveRawFile_;
+  std::string recordingPath_;
 };
 }  // namespace metavision_driver
 #endif  // METAVISION_DRIVER__METAVISION_WRAPPER_H_

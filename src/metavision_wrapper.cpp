@@ -29,6 +29,7 @@
 #include <metavision/hal/facilities/i_trigger_in.h>
 
 #include <chrono>
+#include <filesystem>
 #include <map>
 #include <set>
 #include <thread>
@@ -119,10 +120,11 @@ int MetavisionWrapper::setBias(const std::string & name, int val)
   return (now);
 }
 
-bool MetavisionWrapper::initialize(bool useMultithreading, const std::string & biasFile)
+bool MetavisionWrapper::initialize(bool useMultithreading, const std::string & biasFile, bool saveRawFile)
 {
   biasFile_ = biasFile;
   useMultithreading_ = useMultithreading;
+  saveRawFile_ = saveRawFile;
 
   if (!initializeCamera()) {
     LOG_ERROR_NAMED("could not initialize camera!");
@@ -387,6 +389,18 @@ bool MetavisionWrapper::initializeCamera()
     LOG_ERROR_NAMED("unexpected sdk error: " << e.what());
     return (false);
   }
+
+  // Create folder in /tmp/recordings with timestamp.
+  std::time_t t = std::time(nullptr);
+  std::tm* now = std::localtime(&t);
+  char path[250];
+  std::sprintf(path, "/tmp/recordings/%04d%02d%02d_%02d%02d%02d", now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
+               now->tm_hour, now->tm_min, now->tm_sec);
+  recordingPath_ = std::string(path);
+  recordingPath_ += "/evs/";
+  std::filesystem::remove_all(recordingPath_);
+  std::filesystem::create_directories(recordingPath_);
+
   return (true);
 }
 
@@ -437,6 +451,9 @@ bool MetavisionWrapper::startCamera(CallbackHandler * h)
     }
     statsThread_ = std::make_shared<std::thread>(&MetavisionWrapper::statsThread, this);
     // this will actually start the camera
+    if (saveRawFile_) {
+      cam_.start_recording(recordingPath_ + "evs" + serialNumber_ + ".raw");
+    }
     cam_.start();
   } catch (const Metavision::CameraException & e) {
     LOG_ERROR_NAMED("unexpected sdk error: " << e.what());
