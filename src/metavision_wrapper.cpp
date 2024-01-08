@@ -398,8 +398,10 @@ bool MetavisionWrapper::initializeCamera()
                now->tm_hour, now->tm_min, now->tm_sec);
   recordingPath_ = std::string(path);
   recordingPath_ += "/evs/";
-  std::filesystem::remove_all(recordingPath_);
-  std::filesystem::create_directories(recordingPath_);
+  if (saveRawFile_) {
+    std::filesystem::remove_all(recordingPath_);
+    std::filesystem::create_directories(recordingPath_);
+  }
 
   return (true);
 }
