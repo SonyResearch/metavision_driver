@@ -397,9 +397,12 @@ bool MetavisionWrapper::initializeCamera()
   std::sprintf(path, "/tmp/recordings/%04d%02d%02d_%02d%02d%02d", now->tm_year + 1900, now->tm_mon + 1, now->tm_mday,
                now->tm_hour, now->tm_min, now->tm_sec);
   recordingPath_ = std::string(path);
-  recordingPath_ += "_evs" + serialNumber_ + "/";
-  std::filesystem::remove_all(recordingPath_);
-  std::filesystem::create_directories(recordingPath_);
+  recordingPath_ += "/evs/";
+  if (saveRawFile_) {
+    recordingPath_ += "_evs" + serialNumber_ + "/";
+    std::filesystem::remove_all(recordingPath_);
+    std::filesystem::create_directories(recordingPath_);
+  }
 
   return (true);
 }
