@@ -53,29 +53,52 @@ DriverROS2::DriverROS2(const rclcpp::NodeOptions & options)
   eventPub_ = this->create_publisher<EventPacketMsg>(
     "~/events", rclcpp::QoS(rclcpp::KeepLast(qs)).best_effort().durability_volatile());
 
+  this->get_parameter_or("num_secondary_nodes", numSecondaryNodes_, 1000);
+  LOG_INFO("Num of secondary nodes: " << std::to_string(numSecondaryNodes_));
+
+  this->get_parameter_or("secondary_node_nr", secondaryNodeNr_, 1000);
+
   if (wrapper_->getSyncMode() == "primary") {
     // delay primary until secondary is up and running
     // need to delay this to finish the constructor and release the thread
-    oneOffTimer_ = this->create_wall_timer(std::chrono::seconds(1), [=]() {
-      oneOffTimer_->cancel();
-      auto client = this->create_client<Trigger>("~/ready");
-      while (!client->wait_for_service(std::chrono::seconds(1))) {
-        if (!rclcpp::ok()) {
-          RCLCPP_ERROR(this->get_logger(), "Interrupted!");
-          throw std::runtime_error("interrupted!");
+    readySubscription_ = this->create_subscription<std_msgs::msg::Int16>(
+      "~/ready", 10, std::bind(&DriverROS2::readyCallback, this, std::placeholders::_1));
+    /*
+    oneOffTimer_ = this->create_wall_timer(
+      // std::chrono::seconds(1), std::bind(&DriverROS2::checkSecondaryNodeService, this));
+      std::chrono::seconds(1), [=]() {
+        oneOffTimer_->cancel();
+        auto client = this->create_client<Trigger>("~/ready");
+        while (!client->wait_for_service(std::chrono::seconds(1))) {
+          if (!rclcpp::ok()) {
+            RCLCPP_ERROR(this->get_logger(), "Interrupted!");
+            throw std::runtime_error("interrupted!");
+          }
+          RCLCPP_INFO(this->get_logger(), "primary waiting for secondary...");
         }
-        RCLCPP_INFO(this->get_logger(), "primary waiting for secondary...");
-      }
-      RCLCPP_INFO_STREAM(this->get_logger(), "secondary is up!");
-      start();  // only now can this be started
-    });
+        RCLCPP_INFO_STREAM(this->get_logger(), "secondary is up!");
+        auto subscriber = this->create_subscription<std_msgs::msg::Int16>(
+          "~/ready", &DriverROS2::readyCallback, this, std::placeholders::_1);
+        // start();  // only now can this be started
+      });
+    */
   } else if (wrapper_->getSyncMode() == "secondary") {
     start();
     // creation of server signals to primary that we are ready.
-    // We don't handle the callback
-    secondaryReadyServer_ = this->create_service<Trigger>(
-      "~/ready",
-      [=](const std::shared_ptr<Trigger::Request>, std::shared_ptr<Trigger::Response>) {});
+    auto publisher = this->create_publisher<std_msgs::msg::Int16>("~/ready", 10);
+    auto message = std_msgs::msg::Int16();
+    message.data = secondaryNodeNr_;
+    publisher->publish(message);
+    /*
+    secondaryReadyServer_ = this->create_service<std_srvs::srv::Trigger>(
+      "~/ready", [=](
+                   const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                   std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+        RCLCPP_INFO(this->get_logger(), "Received service request from primary node.");
+        // Perform whatever action you need to do here
+        response->success = true;
+      });
+    */
   } else {
     // standalone mode
     start();
@@ -87,6 +110,63 @@ DriverROS2::~DriverROS2()
   stop();
   wrapper_.reset();  // invoke destructor
 }
+
+void DriverROS2::readyCallback(const std_msgs::msg::Int16::SharedPtr msg)
+{
+  auto it = acknowledgedNodes_.find(msg->data);
+  if (it == acknowledgedNodes_.end()) {
+    acknowledgedNodes_.insert(msg->data);
+  }
+  if (acknowledgedNodes_.size() == numSecondaryNodes_) {
+    RCLCPP_INFO_STREAM(this->get_logger(), "All secondary nodes are up!");
+    start();  // only now can this be started
+  }
+}
+
+/*
+void DriverROS2::checkSecondaryNodeService()
+{
+  serviceClient_ = this->create_client<Trigger>("~/ready");
+  if (!serviceClient_->wait_for_service(std::chrono::seconds(1))) {
+    RCLCPP_INFO(this->get_logger(), "Waiting for secondary node service...");
+    return;
+  }
+
+  // Send service request to each secondary node
+  for (int i = 0; i < numSecondaryNodes_; ++i) {
+    auto it = acknowledgedNodes_.find(i);
+    if (it == acknowledgedNodes_.end()) {
+      auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
+      auto future = serviceClient_->async_send_request(
+        request, std::bind(&DriverROS2::serviceResponseCallback, this, std::placeholders::_1, std::placeholders::_2, i));
+
+      // Wait for the future to complete
+      rclcpp::spin_until_future_complete(this->get_node_base_interface(), future);
+    }
+  }
+}
+
+void DriverROS2::serviceResponseCallback(
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future, int node_id)
+{
+  if (future.get()->success) {
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Received confirmation from secondary node %d. Proceeding with operation.", node_id);
+    acknowledgedNodes_.insert(node_id);
+
+    if (acknowledgedNodes_.size() == numSecondaryNodes_) {
+      // RCLCPP_INFO(
+      //   this->get_logger(),
+      //   "Received confirmation from all secondary nodes. Proceeding with operation.");
+      RCLCPP_INFO_STREAM(this->get_logger(), "All secondary nodes are up!");
+      start();  // only now can this be started
+    }
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Failed to get confirmation from secondary node %d.", node_id);
+  }
+}
+*/
 
 void DriverROS2::saveBiases(
   const std::shared_ptr<Trigger::Request> request,

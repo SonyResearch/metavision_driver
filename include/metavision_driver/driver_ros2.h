@@ -21,6 +21,7 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/header.hpp>
+#include <std_msgs/msg/int16.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <string>
 
@@ -81,8 +82,17 @@ private:
   EventPacketMsg::UniquePtr msg_;
   rclcpp::Publisher<EventPacketMsg>::SharedPtr eventPub_;
   // ------ related to sync
-  rclcpp::Service<Trigger>::SharedPtr secondaryReadyServer_;
-  rclcpp::TimerBase::SharedPtr oneOffTimer_;
+  void readyCallback(const std_msgs::msg::Int16::SharedPtr msg);
+  // void checkSecondaryNodeService();
+  // void serviceResponseCallback(
+  //   rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future, int node_id);
+  // rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr secondaryReadyServer_;
+  int secondaryNodeNr_;
+  int numSecondaryNodes_;
+  std::unordered_set<int> acknowledgedNodes_;
+  // rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr serviceClient_;
+  // rclcpp::TimerBase::SharedPtr oneOffTimer_;
+  rclcpp::Subscription<std_msgs::msg::Int16>::SharedPtr readySubscription_;
   // ------ related to dynamic config and services
   typedef std::map<std::string, rcl_interfaces::msg::ParameterDescriptor> ParameterMap;
   rclcpp::Node::OnSetParametersCallbackHandle::SharedPtr callbackHandle_;
