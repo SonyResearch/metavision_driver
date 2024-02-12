@@ -53,10 +53,14 @@ DriverROS2::DriverROS2(const rclcpp::NodeOptions & options)
   eventPub_ = this->create_publisher<EventPacketMsg>(
     "~/events", rclcpp::QoS(rclcpp::KeepLast(qs)).best_effort().durability_volatile());
 
-  this->get_parameter_or("num_secondary_nodes", numSecondaryNodes_, 1000);
-  LOG_INFO("Num of secondary nodes: " << std::to_string(numSecondaryNodes_));
+  if (wrapper_->getSyncMode() == "primary") {
+    this->get_parameter_or("num_secondary_nodes", numSecondaryNodes_, 5);
+    LOG_INFO("Num of secondary nodes: " << std::to_string(numSecondaryNodes_));
+  } else if (wrapper_->getSyncMode() == "secondary") {
+    this->get_parameter_or("secondary_node_nr", secondaryNodeNr_, 100);
+    LOG_INFO("Secondary node nr: " << secondaryNodeNr_);
+  }
 
-  this->get_parameter_or("secondary_node_nr", secondaryNodeNr_, 1000);
 
   if (wrapper_->getSyncMode() == "primary") {
     // delay primary until secondary is up and running
