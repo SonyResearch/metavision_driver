@@ -93,6 +93,7 @@ DriverROS2::DriverROS2(const rclcpp::NodeOptions & options)
     auto message = std_msgs::msg::Int16();
     message.data = secondaryNodeNr_;
     publisher->publish(message);
+    LOG_INFO("Node " << secondaryNodeNr_ << " sent sync signal");
     /*
     secondaryReadyServer_ = this->create_service<std_srvs::srv::Trigger>(
       "~/ready", [=](
@@ -117,6 +118,7 @@ DriverROS2::~DriverROS2()
 
 void DriverROS2::readyCallback(const std_msgs::msg::Int16::SharedPtr msg)
 {
+  LOG_INFO("Received sync signal from secondary node " << msg->data);
   auto it = acknowledgedNodes_.find(msg->data);
   if (it == acknowledgedNodes_.end()) {
     acknowledgedNodes_.insert(msg->data);
