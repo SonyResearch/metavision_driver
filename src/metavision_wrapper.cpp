@@ -399,6 +399,7 @@ bool MetavisionWrapper::initializeCamera()
   recordingPath_ = std::string(path);
   recordingPath_ += "/evs/";
   if (saveRawFile_) {
+    recordingPath_ += "_evs" + serialNumber_ + "/";
     std::filesystem::remove_all(recordingPath_);
     std::filesystem::create_directories(recordingPath_);
   }
