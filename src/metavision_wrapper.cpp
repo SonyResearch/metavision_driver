@@ -135,6 +135,9 @@ bool MetavisionWrapper::initialize(bool useMultithreading, const std::string & b
 
 bool MetavisionWrapper::stop()
 {
+  if (!cam_.stop_recording()) {
+    LOG_ERROR_NAMED("Camera raw recording could not be stopped!");
+  }
   bool status = false;
   if (cam_.is_running()) {
     cam_.stop();
