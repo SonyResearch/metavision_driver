@@ -20,6 +20,7 @@
 #include <map>
 #include <rclcpp/parameter_events_filter.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
+#include <rclcpp/qos.hpp>
 #include <string>
 #include <vector>
 
@@ -65,8 +66,11 @@ DriverROS2::DriverROS2(const rclcpp::NodeOptions & options)
   if (wrapper_->getSyncMode() == "primary") {
     // delay primary until secondary is up and running
     // need to delay this to finish the constructor and release the thread
+    // rmw_qos_profile_t qosProf = rmw_qos_profile_default.reliable();
+    rclcpp::QoS qos(rclcpp::KeepLast(5));
+    qos.reliable();
     readySubscription_ = this->create_subscription<std_msgs::msg::Int16>(
-      "~/ready", 10, std::bind(&DriverROS2::readyCallback, this, std::placeholders::_1));
+      "~/ready", rclcpp::QoS(rclcpp::KeepLast(10)).reliable(), std::bind(&DriverROS2::readyCallback, this, std::placeholders::_1));
     /*
     oneOffTimer_ = this->create_wall_timer(
       // std::chrono::seconds(1), std::bind(&DriverROS2::checkSecondaryNodeService, this));
@@ -89,7 +93,7 @@ DriverROS2::DriverROS2(const rclcpp::NodeOptions & options)
   } else if (wrapper_->getSyncMode() == "secondary") {
     start();
     // creation of server signals to primary that we are ready.
-    auto publisher = this->create_publisher<std_msgs::msg::Int16>("~/ready", 10);
+    auto publisher = this->create_publisher<std_msgs::msg::Int16>("~/ready", rclcpp::QoS(rclcpp::KeepLast(10)).reliable());
     auto message = std_msgs::msg::Int16();
     message.data = secondaryNodeNr_;
     publisher->publish(message);
