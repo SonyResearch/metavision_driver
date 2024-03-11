@@ -58,7 +58,7 @@ def launch_setup(context, *args, **kwargs):
                 "trigger_out_period": 100000,  # in usec
                 "trigger_duty_cycle": 0.5,  # fraction high/low
                 "event_message_time_threshold": 1.0e-3,
-                "save_raw_file": True,
+                "save_raw_file": False,
             },
         ],
         remappings=[("~/events", cam_str + "/events")],
