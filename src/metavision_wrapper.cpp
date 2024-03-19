@@ -76,7 +76,7 @@ MetavisionWrapper::MetavisionWrapper(const std::string & loggerName)
   lastPrintTime_ = std::chrono::system_clock::now();
 }
 
-MetavisionWrapper::~MetavisionWrapper() { stop(); }
+MetavisionWrapper::~MetavisionWrapper() { }
 
 int MetavisionWrapper::getBias(const std::string & name)
 {
